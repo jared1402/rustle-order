@@ -7,15 +7,25 @@
 <meta name="robots" content="noindex">
 <title>Order</title>
 <!--
-  Rustle order page (Drop 34). One file, no outside scripts, fonts or
-  trackers. The shop's items and prices are in this page's own address
-  after the "#", which browsers never send to the web server. The order is
-  sent by the customer's own WhatsApp, straight to the shop.
+  Rustle order page (Drop 34). One file, no fonts or trackers. The shop's
+  items and prices are in this page's own address after the "#", which
+  browsers never send to the web server. The order is sent by the
+  customer's own WhatsApp, straight to the shop.
+
+  Live orders (Drop 42): when the link has "l" (the shop's inbox and key),
+  the order is sealed here with that key (AES-GCM) and sent to the Rustle
+  relay, which pings the shop's phone. The relay and Firebase only see
+  scrambled bytes. Cloudflare Turnstile (the only outside script, loaded
+  only for live links) checks the sender is a person. The page then shows
+  how the order is going. WhatsApp stays as the backup.
 
   Format (keep in step with lib/util/order_link.dart):
     #m=<base64url(JSON)>  {"v":1,"s":shop,"w":"2782…","c":"R","d":"2026-11-02",
                            "o":{"c":1,"d":1,"f":25},"n":note,
-                           "i":[[sid,name,price,category,soldOut],…]}
+                           "i":[[sid,name,price,category,soldOut],…],
+                           "l":{"i":inbox,"k":base64url(32-byte key)}}
+    sealed order: base64url(iv[12] + AES-GCM(code text) + tag[16]),
+                  additional data "rustle-order|1|" + inbox
     order code: RO1.<base64url(JSON)>
                           {"v":1,"s":shop,"n":name,"p":phone,"m":"c"|"d","w":when,
                            "a":address,"t":note,"f":fee,"i":[[sid,qty,price,name],…]}
@@ -69,6 +79,19 @@ input:focus,textarea:focus{outline:2px solid var(--lime);border-color:transparen
 footer{margin:30px 0 10px;text-align:center;color:var(--muted);font-size:13px}
 footer a{color:var(--lime);text-decoration:none;font-weight:700}
 .small{font-size:13px;color:var(--muted);margin-top:8px}
+.live{width:100%;margin-top:18px;background:var(--lime);color:var(--onlime);padding:16px;font-size:17px}
+.live[disabled]{opacity:.6}
+.wa{width:100%;margin-top:8px;background:transparent;border:1px solid var(--line);color:var(--ink);padding:13px;font-size:15px}
+.ts{margin-top:12px;min-height:0}
+.done{padding:40px 4px 20px;text-align:center}
+.done .big{font-size:54px;line-height:1}
+.done h3{font-size:24px;font-weight:800;margin:14px 0 6px}
+.state{margin:18px auto 0;max-width:420px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;font-size:17px;font-weight:700}
+.state .when{display:block;color:var(--muted);font-weight:500;font-size:14px;margin-top:6px}
+.dots::after{content:'';animation:dots 1.4s steps(4,end) infinite}
+@keyframes dots{0%{content:''}25%{content:'.'}50%{content:'..'}75%{content:'...'}}
+.lastbar{margin-top:12px;background:var(--card);border:1px solid var(--lime);border-radius:14px;padding:12px 14px;font-size:15px;display:flex;justify-content:space-between;align-items:center;gap:10px}
+.lastbar button{background:var(--lime);color:var(--onlime);border:0;border-radius:10px;padding:8px 12px;font-weight:800}
 </style>
 </head>
 <body>
@@ -79,6 +102,10 @@ footer a{color:var(--lime);text-decoration:none;font-weight:700}
 (function(){
   'use strict';
   var PLAY = 'https://play.google.com/store/apps/details?id=com.jcnwizardry.randsandsense';
+  // Live orders (Drop 42): the relay and the Turnstile widget's site key.
+  // Both are public. Until they're filled in, orders go by WhatsApp.
+  var RELAY = 'https://rustle-orders.jared1402-jn.workers.dev';
+  var TURNSTILE_SITEKEY = '0x4AAAAAAF40segN6_O8b0v4';
   function b64u(str){
     var bytes = new TextEncoder().encode(str), bin = '';
     for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
@@ -102,6 +129,14 @@ footer a{color:var(--lime);text-decoration:none;font-weight:700}
     (kids || []).forEach(function(c){ if (c) e.appendChild(c); });
     return e;
   }
+  function bytes64(b){ var bin = ''; for (var i = 0; i < b.length; i++) bin += String.fromCharCode(b[i]); return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,''); }
+  function unbytes64(s){
+    s = s.replace(/-/g,'+').replace(/_/g,'/');
+    while (s.length % 4) s += '=';
+    var bin = atob(s), out = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+    return out;
+  }
   function store(k, v){ try { if (v === undefined) return localStorage.getItem('rustle-order-'+k) || ''; localStorage.setItem('rustle-order-'+k, v); } catch(e) { return ''; } }
 
   var app = document.getElementById('app');
@@ -121,6 +156,9 @@ footer a{color:var(--lime);text-decoration:none;font-weight:700}
     return;
   }
 
+  var live = menu.l && /^[A-Za-z0-9_-]{16,40}$/.test(menu.l.i || '') && /^[A-Za-z0-9_-]{43}$/.test(menu.l.k || '')
+    && RELAY.indexOf('REPLACE_ME') < 0 && TURNSTILE_SITEKEY !== 'REPLACE_ME' && !!(window.crypto && crypto.subtle)
+    ? {i: menu.l.i, k: menu.l.k} : null;
   var cur = menu.c || 'R';
   var opt = menu.o || {c:1};
   var canCollect = opt.c !== 0, canDeliver = opt.d === 1, fee = +opt.f || 0;
@@ -155,8 +193,10 @@ footer a{color:var(--lime);text-decoration:none;font-weight:700}
   if (cats.length > 1) app.appendChild(catBar);
   var list = el('div');
   app.appendChild(list);
+  var lastBar = el('div');
+  app.insertBefore(lastBar, list);
   app.appendChild(el('footer', null, [
-    el('span', {text:'Orders go to the shop on WhatsApp. Made with '}),
+    el('span', {text: live ? 'Orders go straight to the shop. Made with ' : 'Orders go to the shop on WhatsApp. Made with '}),
     el('a', {href: PLAY, target:'_blank', rel:'noopener', text:'Rustle'}),
     el('span', {text:' 🌱'}),
   ]));
@@ -270,9 +310,21 @@ footer a{color:var(--lime);text-decoration:none;font-weight:700}
     panel.appendChild(note);
     var err = el('div', {class:'err'});
     panel.appendChild(err);
-    panel.appendChild(el('button', {class:'btn send', text:'Send order on WhatsApp', onclick:send}));
-    panel.appendChild(el('button', {class:'btn ghost', text:'Keep shopping', onclick:function(){ sheet.classList.remove('on'); }}));
-    panel.appendChild(el('p', {class:'small', text:'WhatsApp opens with your order written out. Tap send there. Leave the code at the end: it puts the order straight into the shop’s app.'}));
+    var liveBtn = null;
+    if (live) {
+      var ts = el('div', {class:'ts', id:'ts'});
+      panel.appendChild(ts);
+      liveBtn = el('button', {class:'btn live', text:'Send order', onclick:sendLive});
+      panel.appendChild(liveBtn);
+      panel.appendChild(el('button', {class:'btn wa', text:'Send on WhatsApp instead', onclick:send}));
+      panel.appendChild(el('button', {class:'btn ghost', text:'Keep shopping', onclick:function(){ sheet.classList.remove('on'); }}));
+      panel.appendChild(el('p', {class:'small', text:'Your order goes straight to the shop’s phone, locked so only the shop can read it. You’ll see here when they accept it.'}));
+      human(ts);
+    } else {
+      panel.appendChild(el('button', {class:'btn send', text:'Send order on WhatsApp', onclick:send}));
+      panel.appendChild(el('button', {class:'btn ghost', text:'Keep shopping', onclick:function(){ sheet.classList.remove('on'); }}));
+      panel.appendChild(el('p', {class:'small', text:'WhatsApp opens with your order written out. Tap send there. Leave the code at the end: it puts the order straight into the shop’s app.'}));
+    }
 
     var useFee = mode === 'd' && fee > 0;
     feeRow.style.display = useFee ? 'flex' : 'none';
@@ -292,12 +344,13 @@ footer a{color:var(--lime);text-decoration:none;font-weight:700}
       return parts.join(', ') || 'As soon as possible';
     }
 
-    function send(){
+    // Checks the form and builds the order (null when something's missing).
+    function build(){
       err.textContent = '';
       var n = name.value.trim();
-      if (!n) { err.textContent = 'Please add your name.'; name.focus(); return; }
-      if (mode === 'd' && addr && !addr.value.trim()) { err.textContent = 'Where should they deliver?'; addr.focus(); return; }
-      if (!asap && !time.value) { err.textContent = 'Pick a time, or choose As soon as possible.'; time.focus(); return; }
+      if (!n) { err.textContent = 'Please add your name.'; name.focus(); return null; }
+      if (mode === 'd' && addr && !addr.value.trim()) { err.textContent = 'Where should they deliver?'; addr.focus(); return null; }
+      if (!asap && !time.value) { err.textContent = 'Pick a time, or choose As soon as possible.'; time.focus(); return null; }
       store('name', n); store('phone', phone.value.trim()); if (addr) store('addr', addr.value.trim());
       var p = picked();
       var code = {v:1, s: menu.s || '', n: n, m: mode, w: whenText(), i: p.map(function(i){ return [i.sid, qty[i.sid], i.price, i.name]; })};
@@ -305,6 +358,49 @@ footer a{color:var(--lime);text-decoration:none;font-weight:700}
       if (mode === 'd' && addr) code.a = addr.value.trim();
       if (note.value.trim()) code.t = note.value.trim();
       if (useFee) code.f = fee;
+      return code;
+    }
+
+    // Live: sealed with the shop's key, sent to the relay, then the status screen.
+    function sendLive(){
+      var code = build();
+      if (!code) return;
+      var text = 'RO1.' + b64u(JSON.stringify(code));
+      liveBtn.disabled = true;
+      liveBtn.textContent = 'Sending…';
+      var total = itemsTotal() + (useFee ? fee : 0);
+      waitHuman().then(function(token){
+        return seal(text).then(function(c){
+          return fetch(RELAY + '/order', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({i: live.i, c: c, t: token})});
+        });
+      }).then(function(r){
+        return r.json().catch(function(){ return {}; }).then(function(j){ return {ok: r.ok, j: j}; });
+      }).then(function(res){
+        if (!res.ok || !res.j.o) {
+          var e = res.j && res.j.error;
+          throw new Error(e === 'off' ? 'This shop isn’t taking orders here right now. Send it on WhatsApp instead.'
+            : e === 'busy' ? 'The shop has a lot of orders right now. Send it on WhatsApp instead.'
+            : e === 'check' ? 'Couldn’t check you’re a person. Try again.'
+            : 'Couldn’t send it. Check your signal and try again, or send it on WhatsApp.');
+        }
+        var last = {i: live.i, o: res.j.o, s: menu.s || '', m: mode, at: Date.now(), total: total, w: menu.w || '',
+          lines: picked().map(function(i){ return qty[i.sid] + ' × ' + i.name; })};
+        store('last', JSON.stringify(last));
+        qty = {};
+        sheet.classList.remove('on');
+        showStatus(last);
+      }).catch(function(e){
+        err.textContent = e && e.message && e.message.indexOf(' ') > 0 ? e.message : 'Couldn’t send it. Check your signal and try again, or send it on WhatsApp.';
+        liveBtn.disabled = false;
+        liveBtn.textContent = 'Send order';
+        resetHuman();
+      });
+    }
+
+    function send(){
+      var code = build();
+      if (!code) return;
+      var n = code.n, p = picked();
       var lines = ['🛒 *Order for ' + (menu.s || 'you') + '*', 'From: ' + n + (code.p ? ' (' + code.p + ')' : ''), ''];
       p.forEach(function(i){ lines.push(qty[i.sid] + ' × ' + i.name + '  ' + money(i.price * qty[i.sid])); });
       if (useFee) lines.push('Delivery  ' + money(fee));
@@ -320,6 +416,124 @@ footer a{color:var(--lime);text-decoration:none;font-weight:700}
       var to = String(menu.w || '').replace(/\D/g, '');
       location.href = 'https://wa.me/' + to + '?text=' + text;
     }
+  }
+
+  // ---- Live orders: the person check, sealing, and the status screen ----
+
+  var tsToken = '', tsWidget = null, tsWaiters = [];
+  function human(box){
+    tsToken = '';
+    function render(){
+      try {
+        tsWidget = turnstile.render(box, {
+          sitekey: TURNSTILE_SITEKEY,
+          appearance: 'interaction-only',
+          theme: 'dark',
+          callback: function(t){ tsToken = t; var w = tsWaiters; tsWaiters = []; w.forEach(function(f){ f(t); }); },
+          'expired-callback': function(){ tsToken = ''; },
+          'error-callback': function(){ tsToken = ''; },
+        });
+      } catch (e) {}
+    }
+    if (window.turnstile) { render(); return; }
+    if (!document.getElementById('ts-js')) {
+      var sc = document.createElement('script');
+      sc.id = 'ts-js';
+      sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+      sc.async = true;
+      sc.onload = render;
+      document.head.appendChild(sc);
+    } else {
+      var t = setInterval(function(){ if (window.turnstile) { clearInterval(t); render(); } }, 200);
+    }
+  }
+  function waitHuman(){
+    if (tsToken) return Promise.resolve(tsToken);
+    return new Promise(function(ok, no){
+      tsWaiters.push(ok);
+      setTimeout(function(){ no(new Error('Couldn’t check you’re a person. Try again.')); }, 20000);
+    });
+  }
+  function resetHuman(){
+    tsToken = '';
+    try { if (window.turnstile && tsWidget !== null) turnstile.reset(tsWidget); } catch (e) {}
+  }
+
+  function seal(text){
+    var aad = new TextEncoder().encode('rustle-order|1|' + live.i);
+    return crypto.subtle.importKey('raw', unbytes64(live.k), {name:'AES-GCM'}, false, ['encrypt']).then(function(key){
+      var iv = crypto.getRandomValues(new Uint8Array(12));
+      return crypto.subtle.encrypt({name:'AES-GCM', iv: iv, additionalData: aad}, key, new TextEncoder().encode(text)).then(function(ct){
+        var c = new Uint8Array(ct), all = new Uint8Array(12 + c.length);
+        all.set(iv, 0); all.set(c, 12);
+        return bytes64(all);
+      });
+    });
+  }
+
+  var poll = null;
+  function stateText(last, s, eta){
+    var shop = last.s || 'The shop';
+    switch (s) {
+      case 'seen': return {t: shop + ' has your order', w: 'They’ll accept it soon.'};
+      case 'confirmed': return {t: 'Accepted ✓', w: eta ? 'Ready at about ' + eta : 'They’re on it.'};
+      case 'ready': return last.m === 'd' ? {t: 'On its way 🛵', w: ''} : {t: 'Ready to collect 🎉', w: ''};
+      case 'done': return {t: 'All done. Thanks for ordering!', w: ''};
+      case 'cancelled': return {t: 'Sorry, ' + shop + ' can’t do this order', w: 'Message them on WhatsApp to sort it out.'};
+      default: return {t: 'Sent ✓ Waiting for ' + shop + ' to see it', w: '', wait: true};
+    }
+  }
+  function showStatus(last){
+    if (poll) clearTimeout(poll);
+    document.querySelector('.bar').style.display = 'none';
+    app.innerHTML = '';
+    var state = el('div', {class:'state'});
+    var box = el('div', {class:'done'}, [
+      el('div', {class:'big', text:'🛒'}),
+      el('h3', {text:'Order sent to ' + (last.s || 'the shop')}),
+      el('div', {class:'sub', text: (last.lines || []).join(', ')}),
+      state,
+    ]);
+    app.appendChild(box);
+    var again = el('button', {class:'btn wa', text:'Order something else', onclick:function(){ location.reload(); }});
+    app.appendChild(again);
+    if (last.w) app.appendChild(el('button', {class:'btn wa', text:'Message the shop on WhatsApp', onclick:function(){
+      location.href = 'https://wa.me/' + String(last.w).replace(/\D/g, '');
+    }}));
+    app.appendChild(el('p', {class:'small', style:'text-align:center', text:'Keep this page open, or come back to it: it updates by itself.'}));
+    var started = last.at || Date.now();
+    function draw(s, eta){
+      var x = stateText(last, s, eta);
+      state.innerHTML = '';
+      state.appendChild(el('span', {class: x.wait ? 'dots' : '', text: x.t}));
+      if (x.w) state.appendChild(el('span', {class:'when', text: x.w}));
+      return s === 'done' || s === 'cancelled';
+    }
+    function tick(){
+      fetch(RELAY + '/status?i=' + encodeURIComponent(last.i) + '&o=' + encodeURIComponent(last.o), {cache:'no-store'})
+        .then(function(r){ return r.ok ? r.json() : null; })
+        .then(function(j){
+          var over = j ? draw(j.s, j.e) : false;
+          var age = Date.now() - started;
+          if (!over && age < 6 * 3600000) poll = setTimeout(tick, age < 600000 ? 8000 : 30000);
+        })
+        .catch(function(){ poll = setTimeout(tick, 15000); });
+    }
+    draw('new', '');
+    tick();
+  }
+
+  // Back to the page after ordering: show how the last order is going.
+  if (live) {
+    try {
+      var last = JSON.parse(store('last') || 'null');
+      if (last && last.i === live.i && Date.now() - last.at < 12 * 3600000) {
+        lastBar.appendChild(el('div', {class:'lastbar'}, [
+          el('span', {text:'Your order from ' + new Date(last.at).toLocaleTimeString('en-ZA', {hour:'2-digit', minute:'2-digit'})}),
+          el('button', {text:'See how it’s going', onclick:function(){ showStatus(last); }}),
+        ]));
+      }
+    } catch (e) {}
   }
 
   if (cats.length > 1) drawCats();
