@@ -1,39 +1,4 @@
-{
- "format": 1,
- "packs": [
-  {
-   "id": "beauty-plus",
-   "name": "Beauty plus",
-   "file": "beauty-plus.json",
-   "version": 1,
-   "blurb": "Barbers, braids, lashes, nails and matric dance season.",
-   "groups": [
-    "beauty"
-   ],
-   "count": 7,
-   "kb": 3
-  },
-  {
-   "id": "food-plus",
-   "name": "Food plus",
-   "file": "food-plus.json",
-   "version": 1,
-   "blurb": "Kotas, braai weekends, home bakes and lunch specials.",
-   "groups": [
-    "food"
-   ],
-   "count": 4,
-   "kb": 2
-  },
-  {
-   "id": "festive",
-   "name": "Festive season",
-   "file": "festive.json",
-   "version": 1,
-   "blurb": "Black Friday, December specials, holiday hours and New Year, for every business.",
-   "groups": [],
-   "count": 4,
-   "kb": 1
-  }
- ]
-}
+   {
+    "format": 1,
+    "packs": []
+   }
