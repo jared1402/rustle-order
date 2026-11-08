@@ -1,0 +1,127 @@
+{
+ "format": 1,
+ "id": "food-plus",
+ "name": "Food plus",
+ "version": 1,
+ "templates": [
+  {
+   "id": "fp-kota-menu",
+   "name": "Kota menu board",
+   "groups": [
+    "food"
+   ],
+   "kind": "menu",
+   "style": "menuBoard",
+   "palette": 11,
+   "font": "lilita",
+   "headline": "Our menu",
+   "items": [
+    {
+     "label": "Kota",
+     "price": 35,
+     "category": "Kotas"
+    },
+    {
+     "label": "Russian kota",
+     "price": 45,
+     "category": "Kotas"
+    },
+    {
+     "label": "Full house kota",
+     "price": 75,
+     "category": "Kotas"
+    },
+    {
+     "label": "Chips",
+     "price": 20,
+     "category": "Sides"
+    },
+    {
+     "label": "Cold drink",
+     "price": 15,
+     "category": "Drinks"
+    }
+   ]
+  },
+  {
+   "id": "fp-braai-weekend",
+   "name": "Braai weekend",
+   "groups": [
+    "food"
+   ],
+   "kind": "specials",
+   "style": "blocks",
+   "palette": 1,
+   "font": "anton",
+   "headline": "Braai weekend",
+   "items": [
+    {
+     "label": "Wors roll",
+     "price": 40,
+     "special": 35
+    },
+    {
+     "label": "Chops and pap",
+     "price": 85,
+     "special": 75
+    },
+    {
+     "label": "Chicken quarter",
+     "price": 55,
+     "special": 45
+    }
+   ]
+  },
+  {
+   "id": "fp-home-bakes",
+   "name": "Home bakes",
+   "groups": [
+    "food",
+    "maker"
+   ],
+   "kind": "priceList",
+   "style": "doodle",
+   "palette": 20,
+   "font": "marker",
+   "headline": "Fresh home bakes",
+   "items": [
+    {
+     "label": "Scones",
+     "price": 10
+    },
+    {
+     "label": "Muffins",
+     "price": 15
+    },
+    {
+     "label": "Koeksisters",
+     "price": 8
+    },
+    {
+     "label": "Banana bread",
+     "price": 60
+    }
+   ]
+  },
+  {
+   "id": "fp-lunch-special",
+   "name": "Lunch special",
+   "groups": [
+    "food"
+   ],
+   "kind": "spotlight",
+   "style": "burst",
+   "palette": 5,
+   "font": "archivo",
+   "headline": "Lunch special",
+   "message": "Every weekday from 12 to 2.",
+   "items": [
+    {
+     "label": "Pap and wors",
+     "price": 55,
+     "special": 45
+    }
+   ]
+  }
+ ]
+}

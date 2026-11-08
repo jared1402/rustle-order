@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0F1112">
+<meta name="robots" content="noindex">
+<title>Order</title>
+<!--
+  Rustle order page (Drop 34). One file, no outside scripts, fonts or
+  trackers. The shop's items and prices are in this page's own address
+  after the "#", which browsers never send to the web server. The order is
+  sent by the customer's own WhatsApp, straight to the shop.
+
+  Format (keep in step with lib/util/order_link.dart):
+    #m=<base64url(JSON)>  {"v":1,"s":shop,"w":"2782…","c":"R","d":"2026-11-02",
+                           "o":{"c":1,"d":1,"f":25},"n":note,
+                           "i":[[sid,name,price,category,soldOut],…]}
+    order code: RO1.<base64url(JSON)>
+                          {"v":1,"s":shop,"n":name,"p":phone,"m":"c"|"d","w":when,
+                           "a":address,"t":note,"f":fee,"i":[[sid,qty,price,name],…]}
+-->
+<style>
+:root{--bg:#0F1112;--card:#191C1D;--line:#2A2E2F;--ink:#F4F6F1;--muted:#9AA19A;--lime:#D4F36B;--onlime:#0F1112;--red:#F26B5B}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{background:var(--bg);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;font-size:16px}
+body{padding:0 16px 120px;max-width:640px;margin:0 auto}
+header{padding:28px 0 8px}
+.shop{font-size:30px;font-weight:800;letter-spacing:-.5px;line-height:1.1}
+.sub{color:var(--muted);margin-top:6px;font-size:14px}
+.note{margin-top:12px;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px 14px;font-size:15px}
+.cats{display:flex;gap:8px;overflow-x:auto;padding:14px 0 6px;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.chip{flex:0 0 auto;border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:999px;padding:8px 14px;font-size:14px;font-weight:600}
+.chip.on{background:var(--lime);color:var(--onlime);border-color:var(--lime)}
+h2{font-size:14px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin:22px 4px 8px}
+.item{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:8px}
+.item .n{flex:1;min-width:0}
+.item .t{font-weight:700;font-size:16px;line-height:1.25}
+.item .p{color:var(--lime);font-weight:700;margin-top:2px}
+.item.out{opacity:.45}
+.item.out .p{color:var(--muted)}
+.step{display:flex;align-items:center;gap:6px}
+.btn{border:0;border-radius:12px;font-weight:800;font-size:16px;cursor:pointer}
+.add{background:var(--lime);color:var(--onlime);padding:10px 16px}
+.pm{background:#262A2B;color:var(--ink);width:40px;height:40px;font-size:22px;line-height:1}
+.q{min-width:26px;text-align:center;font-weight:800;font-size:17px}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:linear-gradient(transparent,var(--bg) 30%)}
+.bar .btn{width:100%;max-width:608px;margin:0 auto;display:flex;justify-content:space-between;align-items:center;background:var(--lime);color:var(--onlime);padding:16px 18px;font-size:17px}
+.bar .btn[disabled]{background:#2A2E2F;color:var(--muted)}
+.sheet{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:flex-end;justify-content:center;z-index:5}
+.sheet.on{display:flex}
+.panel{background:var(--bg);border-top:1px solid var(--line);border-radius:22px 22px 0 0;width:100%;max-width:640px;max-height:92vh;overflow:auto;padding:20px 16px calc(20px + env(safe-area-inset-bottom))}
+.panel h3{font-size:22px;font-weight:800;margin-bottom:12px}
+.row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-size:15px}
+.row.total{border-top:1px solid var(--line);margin-top:6px;padding-top:12px;font-weight:800;font-size:18px}
+label{display:block;font-size:13px;color:var(--muted);margin:14px 0 6px;font-weight:600}
+input,textarea{width:100%;background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:12px;padding:13px 14px;font-size:16px;font-family:inherit}
+textarea{min-height:70px;resize:vertical}
+input:focus,textarea:focus{outline:2px solid var(--lime);border-color:transparent}
+.seg{display:flex;gap:8px}
+.seg button{flex:1;padding:12px;background:var(--card);border:1px solid var(--line);color:var(--ink);border-radius:12px;font-weight:700;font-size:15px}
+.seg button.on{background:var(--lime);color:var(--onlime);border-color:var(--lime)}
+.two{display:flex;gap:8px}.two>*{flex:1}
+.send{width:100%;margin-top:18px;background:#25D366;color:#06260F;padding:16px;font-size:17px}
+.ghost{width:100%;margin-top:8px;background:transparent;color:var(--muted);padding:12px;font-size:15px}
+.err{color:var(--red);font-size:14px;margin-top:10px;min-height:1em}
+.empty{padding:60px 8px;text-align:center;color:var(--muted)}
+footer{margin:30px 0 10px;text-align:center;color:var(--muted);font-size:13px}
+footer a{color:var(--lime);text-decoration:none;font-weight:700}
+.small{font-size:13px;color:var(--muted);margin-top:8px}
+</style>
+</head>
+<body>
+<main id="app"></main>
+<div class="bar"><button class="btn" id="view" disabled><span id="vcount">Pick what you’d like</span><span id="vtotal"></span></button></div>
+<div class="sheet" id="sheet"><div class="panel" id="panel"></div></div>
+<script>
+(function(){
+  'use strict';
+  var PLAY = 'https://play.google.com/store/apps/details?id=com.jcnwizardry.randsandsense';
+  function b64u(str){
+    var bytes = new TextEncoder().encode(str), bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+  }
+  function unb64u(s){
+    s = s.replace(/-/g,'+').replace(/_/g,'/');
+    while (s.length % 4) s += '=';
+    var bin = atob(s), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+  function el(tag, attrs, kids){
+    var e = document.createElement(tag);
+    if (attrs) for (var k in attrs) {
+      if (k === 'text') e.textContent = attrs[k];
+      else if (k === 'class') e.className = attrs[k];
+      else if (k.slice(0,2) === 'on') e.addEventListener(k.slice(2), attrs[k]);
+      else e.setAttribute(k, attrs[k]);
+    }
+    (kids || []).forEach(function(c){ if (c) e.appendChild(c); });
+    return e;
+  }
+  function store(k, v){ try { if (v === undefined) return localStorage.getItem('rustle-order-'+k) || ''; localStorage.setItem('rustle-order-'+k, v); } catch(e) { return ''; } }
+
+  var app = document.getElementById('app');
+  var menu = null;
+  try {
+    var h = location.hash.replace(/^#/, '');
+    var m = /(?:^|&)m=([A-Za-z0-9_-]+)/.exec(h);
+    if (m) menu = JSON.parse(unb64u(m[1]));
+    if (!menu || menu.v !== 1 || !Array.isArray(menu.i)) menu = null;
+  } catch (e) { menu = null; }
+
+  if (!menu) {
+    app.appendChild(el('div', {class:'empty'}, [
+      el('p', {text:'This order link isn’t complete. Ask the shop to send it again.'}),
+    ]));
+    document.querySelector('.bar').style.display = 'none';
+    return;
+  }
+
+  var cur = menu.c || 'R';
+  var opt = menu.o || {c:1};
+  var canCollect = opt.c !== 0, canDeliver = opt.d === 1, fee = +opt.f || 0;
+  function money(v){
+    var s = (Math.round(v * 100) / 100).toFixed(2).split('.');
+    s[0] = s[0].replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    return cur + s.join('.');
+  }
+  var items = menu.i.map(function(x){ return {sid:String(x[0]), name:String(x[1]), price:+x[2] || 0, cat:x[3] ? String(x[3]) : '', out:x[4] === 1}; });
+  var qty = {};
+  var cat = '';
+  var mode = canCollect ? 'c' : 'd';
+
+  document.title = (menu.s || 'Order') + ' · Order';
+
+  // Header
+  var dateText = '';
+  if (menu.d) {
+    var d = new Date(menu.d + 'T00:00:00');
+    if (!isNaN(d)) dateText = 'Prices from ' + d.toLocaleDateString('en-ZA', {day:'numeric', month:'short', year:'numeric'});
+  }
+  var how = [canCollect ? 'Collect' : '', canDeliver ? ('Delivery' + (fee > 0 ? ' (' + money(fee) + ')' : '')) : ''].filter(Boolean).join(' · ');
+  app.appendChild(el('header', null, [
+    el('div', {class:'shop', text: menu.s || 'Order'}),
+    el('div', {class:'sub', text: [how, dateText].filter(Boolean).join(' · ')}),
+    menu.n ? el('div', {class:'note', text: menu.n}) : null,
+  ]));
+
+  var cats = [];
+  items.forEach(function(i){ if (i.cat && cats.indexOf(i.cat) < 0) cats.push(i.cat); });
+  var catBar = el('div', {class:'cats'});
+  if (cats.length > 1) app.appendChild(catBar);
+  var list = el('div');
+  app.appendChild(list);
+  app.appendChild(el('footer', null, [
+    el('span', {text:'Orders go to the shop on WhatsApp. Made with '}),
+    el('a', {href: PLAY, target:'_blank', rel:'noopener', text:'Rustle'}),
+    el('span', {text:' 🌱'}),
+  ]));
+
+  function drawCats(){
+    catBar.innerHTML = '';
+    [''].concat(cats).forEach(function(c){
+      catBar.appendChild(el('button', {class:'chip' + (c === cat ? ' on' : ''), text: c || 'All', onclick:function(){ cat = c; drawCats(); drawList(); }}));
+    });
+  }
+  function drawList(){
+    list.innerHTML = '';
+    var groups = {};
+    var order = [];
+    items.forEach(function(i){
+      if (cat && i.cat !== cat) return;
+      var g = i.cat || '';
+      if (!groups[g]) { groups[g] = []; order.push(g); }
+      groups[g].push(i);
+    });
+    order.forEach(function(g){
+      if (g && (cats.length > 1 && !cat)) list.appendChild(el('h2', {text:g}));
+      groups[g].forEach(function(i){
+        var n = qty[i.sid] || 0;
+        var right;
+        if (i.out) right = el('span', {class:'small', text:'Sold out'});
+        else if (n === 0) right = el('button', {class:'btn add', text:'Add', onclick:function(){ qty[i.sid] = 1; update(); }});
+        else right = el('div', {class:'step'}, [
+          el('button', {class:'btn pm', text:'−', 'aria-label':'One less', onclick:function(){ qty[i.sid] = n - 1; if (!qty[i.sid]) delete qty[i.sid]; update(); }}),
+          el('span', {class:'q', text:String(n)}),
+          el('button', {class:'btn pm', text:'+', 'aria-label':'One more', onclick:function(){ qty[i.sid] = Math.min(99, n + 1); update(); }}),
+        ]);
+        list.appendChild(el('div', {class:'item' + (i.out ? ' out' : '')}, [
+          el('div', {class:'n'}, [el('div', {class:'t', text:i.name}), el('div', {class:'p', text: money(i.price)})]),
+          right,
+        ]));
+      });
+    });
+    if (!list.childNodes.length) list.appendChild(el('div', {class:'empty', text:'Nothing here yet.'}));
+  }
+  function picked(){ return items.filter(function(i){ return qty[i.sid] > 0; }); }
+  function itemsTotal(){ return picked().reduce(function(a, i){ return a + i.price * qty[i.sid]; }, 0); }
+  function update(){
+    drawList();
+    var p = picked(), count = p.reduce(function(a, i){ return a + qty[i.sid]; }, 0);
+    var b = document.getElementById('view');
+    b.disabled = count === 0;
+    document.getElementById('vcount').textContent = count ? 'View order · ' + count + (count === 1 ? ' item' : ' items') : 'Pick what you’d like';
+    document.getElementById('vtotal').textContent = count ? money(itemsTotal()) : '';
+  }
+
+  // The order sheet
+  var sheet = document.getElementById('sheet'), panel = document.getElementById('panel');
+  sheet.addEventListener('click', function(e){ if (e.target === sheet) sheet.classList.remove('on'); });
+  document.getElementById('view').addEventListener('click', openSheet);
+
+  function openSheet(){
+    panel.innerHTML = '';
+    var p = picked();
+    panel.appendChild(el('h3', {text:'Your order'}));
+    p.forEach(function(i){
+      panel.appendChild(el('div', {class:'row'}, [el('span', {text: qty[i.sid] + ' × ' + i.name}), el('span', {text: money(i.price * qty[i.sid])})]));
+    });
+    var feeRow = el('div', {class:'row'});
+    var totalRow = el('div', {class:'row total'});
+    panel.appendChild(feeRow);
+    panel.appendChild(totalRow);
+
+    if (canCollect && canDeliver) {
+      panel.appendChild(el('label', {text:'How'}));
+      var seg = el('div', {class:'seg'});
+      ['c','d'].forEach(function(k){
+        seg.appendChild(el('button', {class: mode === k ? 'on' : '', text: k === 'c' ? 'Collect' : 'Delivery', onclick:function(){ mode = k; openSheet(); }}));
+      });
+      panel.appendChild(seg);
+    }
+    var name = el('input', {id:'f-name', autocomplete:'name', placeholder:'Your name', value: store('name')});
+    var phone = el('input', {id:'f-phone', type:'tel', autocomplete:'tel', placeholder:'e.g. 082 123 4567', value: store('phone')});
+    panel.appendChild(el('label', {for:'f-name', text:'Your name'}));
+    panel.appendChild(name);
+    panel.appendChild(el('label', {for:'f-phone', text:'Your WhatsApp number (so they can reply)'}));
+    panel.appendChild(phone);
+    var addr = null;
+    if (mode === 'd') {
+      addr = el('textarea', {id:'f-addr', autocomplete:'street-address', placeholder:'Street, area, any landmark'});
+      addr.value = store('addr');
+      panel.appendChild(el('label', {for:'f-addr', text:'Deliver to'}));
+      panel.appendChild(addr);
+    }
+    panel.appendChild(el('label', {text: mode === 'd' ? 'When' : 'When will you collect?'}));
+    var asap = true;
+    var whenSeg = el('div', {class:'seg'});
+    var pick = el('div', {class:'two', style:'margin-top:8px;display:none'});
+    var day = el('input', {type:'date', 'aria-label':'Day'});
+    var time = el('input', {type:'time', 'aria-label':'Time'});
+    var today = new Date();
+    day.value = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+    day.min = day.value;
+    pick.appendChild(day); pick.appendChild(time);
+    function drawWhen(){
+      whenSeg.innerHTML = '';
+      whenSeg.appendChild(el('button', {class: asap ? 'on' : '', text:'As soon as possible', onclick:function(){ asap = true; drawWhen(); }}));
+      whenSeg.appendChild(el('button', {class: asap ? '' : 'on', text:'Pick a time', onclick:function(){ asap = false; drawWhen(); }}));
+      pick.style.display = asap ? 'none' : 'flex';
+    }
+    drawWhen();
+    panel.appendChild(whenSeg);
+    panel.appendChild(pick);
+    var note = el('textarea', {id:'f-note', placeholder:'No onions, extra sauce, call when outside…'});
+    panel.appendChild(el('label', {for:'f-note', text:'Anything else? (optional)'}));
+    panel.appendChild(note);
+    var err = el('div', {class:'err'});
+    panel.appendChild(err);
+    panel.appendChild(el('button', {class:'btn send', text:'Send order on WhatsApp', onclick:send}));
+    panel.appendChild(el('button', {class:'btn ghost', text:'Keep shopping', onclick:function(){ sheet.classList.remove('on'); }}));
+    panel.appendChild(el('p', {class:'small', text:'WhatsApp opens with your order written out. Tap send there. Leave the code at the end: it puts the order straight into the shop’s app.'}));
+
+    var useFee = mode === 'd' && fee > 0;
+    feeRow.style.display = useFee ? 'flex' : 'none';
+    if (useFee) { feeRow.appendChild(el('span', {text:'Delivery'})); feeRow.appendChild(el('span', {text: money(fee)})); }
+    totalRow.appendChild(el('span', {text:'Total'}));
+    totalRow.appendChild(el('span', {text: money(itemsTotal() + (useFee ? fee : 0))}));
+    sheet.classList.add('on');
+
+    function whenText(){
+      if (asap) return 'As soon as possible';
+      var parts = [];
+      if (day.value) {
+        var d = new Date(day.value + 'T00:00:00');
+        parts.push(d.toLocaleDateString('en-ZA', {weekday:'short', day:'numeric', month:'short'}));
+      }
+      if (time.value) parts.push(time.value);
+      return parts.join(', ') || 'As soon as possible';
+    }
+
+    function send(){
+      err.textContent = '';
+      var n = name.value.trim();
+      if (!n) { err.textContent = 'Please add your name.'; name.focus(); return; }
+      if (mode === 'd' && addr && !addr.value.trim()) { err.textContent = 'Where should they deliver?'; addr.focus(); return; }
+      if (!asap && !time.value) { err.textContent = 'Pick a time, or choose As soon as possible.'; time.focus(); return; }
+      store('name', n); store('phone', phone.value.trim()); if (addr) store('addr', addr.value.trim());
+      var p = picked();
+      var code = {v:1, s: menu.s || '', n: n, m: mode, w: whenText(), i: p.map(function(i){ return [i.sid, qty[i.sid], i.price, i.name]; })};
+      if (phone.value.trim()) code.p = phone.value.trim();
+      if (mode === 'd' && addr) code.a = addr.value.trim();
+      if (note.value.trim()) code.t = note.value.trim();
+      if (useFee) code.f = fee;
+      var lines = ['🛒 *Order for ' + (menu.s || 'you') + '*', 'From: ' + n + (code.p ? ' (' + code.p + ')' : ''), ''];
+      p.forEach(function(i){ lines.push(qty[i.sid] + ' × ' + i.name + '  ' + money(i.price * qty[i.sid])); });
+      if (useFee) lines.push('Delivery  ' + money(fee));
+      lines.push('*Total: ' + money(itemsTotal() + (useFee ? fee : 0)) + '*');
+      lines.push('');
+      lines.push((mode === 'd' ? 'Delivery: ' : 'Collect: ') + whenText());
+      if (code.a) lines.push('Address: ' + code.a);
+      if (code.t) lines.push('Note: ' + code.t);
+      lines.push('');
+      lines.push('Order code (for Rustle):');
+      lines.push('RO1.' + b64u(JSON.stringify(code)));
+      var text = encodeURIComponent(lines.join('\n'));
+      var to = String(menu.w || '').replace(/\D/g, '');
+      location.href = 'https://wa.me/' + to + '?text=' + text;
+    }
+  }
+
+  if (cats.length > 1) drawCats();
+  update();
+})();
+</script>
+</body>
+</html>

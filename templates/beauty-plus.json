@@ -1,0 +1,184 @@
+{
+ "format": 1,
+ "id": "beauty-plus",
+ "name": "Beauty plus",
+ "version": 1,
+ "templates": [
+  {
+   "id": "bp-barber-board",
+   "name": "Barber price board",
+   "groups": [
+    "beauty"
+   ],
+   "kind": "priceList",
+   "style": "menuBoard",
+   "palette": 11,
+   "font": "bebas",
+   "headline": "Cuts and prices",
+   "items": [
+    {
+     "label": "Fade",
+     "price": 100
+    },
+    {
+     "label": "Chiskop",
+     "price": 60
+    },
+    {
+     "label": "Beard trim",
+     "price": 50
+    },
+    {
+     "label": "Kids cut",
+     "price": 70
+    },
+    {
+     "label": "Cut and dye",
+     "price": 180
+    },
+    {
+     "label": "Line-up",
+     "price": 40
+    }
+   ]
+  },
+  {
+   "id": "bp-braids-season",
+   "name": "Braids season",
+   "groups": [
+    "beauty"
+   ],
+   "kind": "specials",
+   "style": "riso",
+   "palette": 21,
+   "font": "anton",
+   "headline": "Braids season",
+   "items": [
+    {
+     "label": "Knotless braids",
+     "price": 650,
+     "special": 550
+    },
+    {
+     "label": "Box braids",
+     "price": 450,
+     "special": 400
+    },
+    {
+     "label": "Cornrows",
+     "price": 200,
+     "special": 160
+    },
+    {
+     "label": "Faux locs",
+     "price": 700,
+     "special": 600
+    }
+   ]
+  },
+  {
+   "id": "bp-lash-bar",
+   "name": "Lash bar, rose gold",
+   "groups": [
+    "beauty"
+   ],
+   "kind": "priceList",
+   "style": "catalogue",
+   "palette": 9,
+   "colors": {
+    "bg": "#2B1B1E",
+    "bg2": "#3A2328",
+    "ink": "#F7E3DA",
+    "sub": "#E0B8A8",
+    "pop": "#E7B49A",
+    "onPop": "#2B1B1E",
+    "panel": "#F7E3DA",
+    "onPanel": "#2B1B1E",
+    "hot": "#C2765C",
+    "strap": "#E7B49A",
+    "onStrap": "#2B1B1E",
+    "tone1": "#C2765C",
+    "tone2": "#E7B49A",
+    "tone3": "#8E5B4F"
+   },
+   "font": "abril",
+   "texture": "sparkle",
+   "frame": "line",
+   "headline": "Lash bar",
+   "tagline": "Wake up flawless",
+   "items": [
+    {
+     "label": "Classic set",
+     "price": 350
+    },
+    {
+     "label": "Hybrid set",
+     "price": 450
+    },
+    {
+     "label": "Volume set",
+     "price": 550
+    },
+    {
+     "label": "Infill",
+     "price": 250
+    },
+    {
+     "label": "Lash removal",
+     "price": 100
+    }
+   ]
+  },
+  {
+   "id": "bp-matric-glam",
+   "name": "Matric dance glam",
+   "groups": [
+    "beauty"
+   ],
+   "kind": "announcement",
+   "style": "bigWord",
+   "palette": 6,
+   "font": "abril",
+   "texture": "confetti",
+   "headline": "Matric dance glam",
+   "message": "Hair, nails, lashes and make-up. Book early, slots go fast."
+  },
+  {
+   "id": "bp-nail-club",
+   "name": "Nail club card",
+   "groups": [
+    "beauty"
+   ],
+   "kind": "loyalty",
+   "style": "blocks",
+   "palette": 13,
+   "font": "lilita",
+   "headline": "Nail club",
+   "stamps": 8,
+   "reward": "Your 8th set is free"
+  },
+  {
+   "id": "bp-bring-a-friend",
+   "name": "Bring a friend voucher",
+   "groups": [
+    "beauty"
+   ],
+   "kind": "voucher",
+   "style": "swiss",
+   "palette": 24,
+   "font": "archivo",
+   "headline": "Bring a friend"
+  },
+  {
+   "id": "bp-salon-hours",
+   "name": "Salon hours",
+   "groups": [
+    "beauty"
+   ],
+   "kind": "hours",
+   "style": "shopfront",
+   "palette": 22,
+   "font": "abril"
+  }
+ ]
+}

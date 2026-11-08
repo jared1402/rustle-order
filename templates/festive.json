@@ -1,0 +1,63 @@
+{
+ "format": 1,
+ "id": "festive",
+ "name": "Festive season",
+ "version": 1,
+ "templates": [
+  {
+   "id": "fs-black-friday",
+   "name": "Black Friday",
+   "kind": "specials",
+   "style": "megaSale",
+   "palette": 25,
+   "font": "anton",
+   "headline": "Black Friday"
+  },
+  {
+   "id": "fs-december-specials",
+   "name": "December specials",
+   "kind": "specials",
+   "style": "swirl",
+   "palette": 7,
+   "font": "lilita",
+   "texture": "confetti",
+   "headline": "December specials"
+  },
+  {
+   "id": "fs-holiday-hours",
+   "name": "Holiday hours",
+   "kind": "hours",
+   "style": "shopfront",
+   "palette": 7,
+   "colors": {
+    "bg": "#0F5132",
+    "bg2": "#14653F",
+    "ink": "#FFF6E5",
+    "sub": "#F2D9A6",
+    "pop": "#D62828",
+    "onPop": "#FFFFFF",
+    "panel": "#FFF6E5",
+    "onPanel": "#0F5132",
+    "hot": "#D62828",
+    "strap": "#D62828",
+    "onStrap": "#FFFFFF",
+    "tone1": "#D62828",
+    "tone2": "#F2B705",
+    "tone3": "#2E8B57"
+   },
+   "font": "archivo",
+   "headline": "Holiday hours"
+  },
+  {
+   "id": "fs-new-year",
+   "name": "Happy New Year",
+   "kind": "announcement",
+   "style": "bigWord",
+   "palette": 26,
+   "font": "anton",
+   "texture": "confetti",
+   "headline": "Happy New Year!",
+   "message": "Thank you for supporting us this year. See you in January!"
+  }
+ ]
+}
